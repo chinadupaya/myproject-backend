@@ -1,0 +1,21 @@
+version: '3'
+services:
+  api:
+    image: myproject-backend
+    build: .
+    networks:
+      - backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/usr/src/app
+
+  web-cli:
+    image: myproject-backend
+    networks:
+      - backend
+    command: sh
+
+networks:
+  backend:
+    driver: bridge
