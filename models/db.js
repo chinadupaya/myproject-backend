@@ -4,7 +4,7 @@ let users = [
   {
     id: '1',
     email: 'robwie@email.com',
-    firsName: 'Robin',
+    firstName: 'Robin',
     lastName: 'Wieruch',
     createdAt: new Date(),
     updatedAt: new Date(1990,1,1,0,0,0,0,),

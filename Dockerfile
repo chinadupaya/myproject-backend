@@ -8,6 +8,7 @@ WORKDIR /usr/src/app
 COPY . .
 RUN npm install
 # Bundle app source
-#COPY . .
+# install dependencies for start.sh
+RUN apt-get update && apt-get install -y netcat
 EXPOSE 3000
-CMD [ "npm", "run", "dev" ]
+CMD [ "npm", "start" ]

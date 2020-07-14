@@ -1,21 +1,25 @@
-version: '3'
+version: "3"
+ 
 services:
-  api:
-    image: myproject-backend
-    build: .
-    networks:
-      - backend
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./:/usr/src/app
-
-  web-cli:
-    image: myproject-backend
-    networks:
-      - backend
-    command: sh
-
-networks:
-  backend:
-    driver: bridge
+    express_app:
+        build: .
+        ports:
+            - 3000:3000
+        volumes:
+            - ./:/usr/src/app
+        environment:
+            - DB_NAME=mydb
+            - DB_HOST=db_server
+            - DB_PORT=3306
+            - DB_USER=root
+            - DB_PASSWORD=password
+        depends_on:
+            - db_server
+        command: "bash start.sh db_server:3306"
+    db_server:
+        image: mysql:5.7
+        ports:
+            - "3306:3306"
+        environment:
+            - MYSQL_ROOT_PASSWORD=password
+            - MYSQL_DATABASE=mydb
