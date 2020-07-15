@@ -148,3 +148,72 @@ VALUES
 	(1,3,now(),now()),
     (1,4,now(),now()),
     (2,2,now(),now());
+CREATE PROCEDURE `get_users`()
+BEGIN
+    SELECT * FROM `users`;
+END ;
+
+CREATE PROCEDURE `get_user`(IN p_user_id INT)
+BEGIN
+	SELECT * FROM `users` WHERE `id` = p_user_id;
+END ;
+
+CREATE PROCEDURE `get_bookings`()
+BEGIN
+	SELECT * FROM `bookings`;
+END;
+
+CREATE PROCEDURE `get_booking`(IN p_booking_id INT)
+BEGIN
+	SELECT * FROM `bookings` WHERE `id` = p_booking_id;
+END;
+
+CREATE PROCEDURE `get_listings`()
+BEGIN
+	SELECT * FROM `listings`;
+END;
+
+CREATE PROCEDURE `get_listing`(IN p_listing_id INT)
+BEGIN
+	SELECT * FROM `listings` WHERE `id` = p_listing_id;
+END;
+
+CREATE PROCEDURE `get_reviews`(IN p_listing_id INT)
+BEGIN
+	SELECT * FROM `reviews` WHERE `listing_id` = p_listing_id;
+END;
+
+CREATE PROCEDURE `get_review`(IN p_listing_id INT, IN p_review_id INT)
+BEGIN
+	SELECT * FROM `reviews` WHERE `id` = p_review_id AND `listing_id` = p_listing_id;
+END;
+
+CREATE PROCEDURE `get_amenities`()
+BEGIN
+	SELECT * FROM `amenities`;
+END;
+
+CREATE PROCEDURE `get_amenity`(IN p_amenity_id INT)
+BEGIN
+	SELECT * FROM `amenities` WHERE `id` = p_amenity_id;
+END;
+
+CREATE PROCEDURE `get_listing_amenities`(IN p_listing_id INT)
+BEGIN
+	SELECT * FROM `listing_amenities` WHERE `listing_id` = p_listing_id;
+END;
+
+CREATE PROCEDURE `get_listing_amenity`(IN p_listing_id INT, IN p_amenity_id INT)
+BEGIN
+	SELECT * FROM `listing_amenities` WHERE `id` = p_amenity_id AND `listing_id` = p_listing_id;
+END;
+
+CREATE PROCEDURE `get_listing_images`(IN p_listing_id INT)
+BEGIN
+	SELECT * FROM `listing_images` WHERE `listing_id` = p_listing_id;
+END;
+
+CREATE PROCEDURE `get_listing_image`(IN p_listing_id INT, IN p_listing_image_id INT)
+BEGIN
+	SELECT * FROM `listing_images` WHERE `id` = p_listing_image_id AND `listing_id` = p_listing_id;
+END

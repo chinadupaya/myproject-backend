@@ -27,4 +27,4 @@ echo "finished update database"
  
 # run node app
 echo "running node app"
-npm start
+npm run dev

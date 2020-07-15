@@ -1,4 +1,14 @@
 var { v4:uuidv4 } = require('uuid')
+var knex = require('knex')({
+    client: 'mysql',
+    version: '5.7',
+    connection: {
+        host : 'db_server',
+        user : 'root',
+        password : 'password',
+        database : 'mydb'
+    }
+});
 var _ = require('lodash');
 var db = require('../models/db');
 const multer = require('multer');
@@ -47,18 +57,30 @@ function checkFileType(file, cb){
 
 const controller = {
     getUsers: (req,res)=>{
-        new Promise((resolve, reject)=>{
-            resolve();
+        knex.raw('CALL get_users()')
+        .then((response)=>{return res.status(200).json({data: response[0][0]})})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
+            }
+        })});
+        /* new Promise((resolve, reject)=>{
             
-        }).then(()=>{
-            res.status(200).json({
-                data: db.users
-            });
-        })
+            const users = knex.raw('CALL get_users()').then((response)=>console.log(response[0][0]));
+            resolve(users);
+        }) */
     },
     getUser: (req,res)=>{
-        const user = _.find(db.users, function(o){return o.id == req.params.userId})
-        new Promise((resolve, reject)=>{
+        knex.raw('CALL get_user(?)',[req.params.userId])
+        .then((response)=>{return res.status(200).json({
+            data: response[0][0][0]
+        })})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
+            }
+        })});
+        /* new Promise((resolve, reject)=>{
             if(user){
                 resolve(user)
             }else{
@@ -74,7 +96,7 @@ const controller = {
                     message: 'User not found'
                 }
             })
-        })
+        }) */
     },
     putUser: (req,res)=>{
         const id = req.params.userId
@@ -175,17 +197,25 @@ const controller = {
         
     },
     getBookings:(req,res)=>{
-        new Promise((resolve, reject)=>{
-            resolve();
-            
-        }).then(()=>{
-            res.status(200).json({
-                data: db.bookings
-            });
-        })
+        knex.raw('CALL get_bookings()')
+        .then((response)=>{return res.status(200).json({data: response[0][0]})})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
+            }
+        })});
     },
     getBooking:(req,res)=>{
-        const booking = _.find(db.bookings, function(o){return o.id == req.params.bookingId})
+        knex.raw('CALL get_booking(?)',[req.params.bookingId])
+        .then((response)=>{return res.status(200).json({
+            data: response[0][0][0]
+        })})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
+            }
+        })});
+        /* const booking = _.find(db.bookings, function(o){return o.id == req.params.bookingId})
         new Promise((resolve, reject)=>{
             if(booking){
                 resolve(booking)
@@ -202,7 +232,7 @@ const controller = {
                     message: 'Booking not found'
                 }
             })
-        })
+        }) */
     },
     putBooking:(req,res)=>{
         const id = req.params.bookingId
@@ -302,17 +332,25 @@ const controller = {
     },
     getListings: (req,res)=>{
         //integrate queries
-        new Promise((resolve, reject)=>{
-            resolve();
-            
-        }).then(()=>{
-            res.status(200).json({
-                data: db.listings
-            });
-        })
+        knex.raw('CALL get_listings()')
+        .then((response)=>{return res.status(200).json({data: response[0][0]})})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
+            }
+        })});
     },
     getListing: (req,res)=>{
-        const listing = _.find(db.listings, function(o){return o.id == req.params.listingId})
+        knex.raw('CALL get_listing(?)',[req.params.listingId])
+        .then((response)=>{return res.status(200).json({
+            data: response[0][0][0]
+        })})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
+            }
+        })});
+        /* const listing = _.find(db.listings, function(o){return o.id == req.params.listingId})
         new Promise((resolve, reject)=>{
             if(listing){
                 resolve(listing)
@@ -329,7 +367,7 @@ const controller = {
                     message: 'Listing not found'
                 }
             })
-        })
+        }) */
     },
     postListing: (req,res)=>{
         const id = uuidv4();
@@ -433,7 +471,16 @@ const controller = {
         
     },
     getReviews: (req,res) =>{
-        new Promise((resolve, reject)=>{
+        knex.raw('CALL get_reviews(?)',[req.params.listingId])
+        .then((response)=>{return res.status(200).json({
+            data: response[0][0]
+        })})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
+            }
+        })});
+        /* new Promise((resolve, reject)=>{
             var reviews = _.filter(db.reviews, function(o) { return o.listing_id == req.params.listingId; });
             if(reviews){
                 resolve(reviews);
@@ -450,10 +497,19 @@ const controller = {
                     message: "No reviews exist"
                 }
             })
-        })
+        }) */
     },
     getReview: (req,res) =>{
-        const review = _.find(db.reviews, function(o){return o.id == req.params.reviewId && o.listingId == req.params.listingId})
+        knex.raw('CALL get_review(?,?)',[req.params.listingId, req.params.reviewId])
+        .then((response)=>{return res.status(200).json({
+            data: response[0][0][0]
+        })})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
+            }
+        })});
+        /* const review = _.find(db.reviews, function(o){return o.id == req.params.reviewId && o.listingId == req.params.listingId})
         new Promise((resolve, reject)=>{
             if (review){
                 res.status(200).json({
@@ -467,7 +523,7 @@ const controller = {
                 })
             }
             resolve()
-        })
+        }) */
     },
     postReview: (req,res) =>{
         const id = uuidv4();
@@ -519,17 +575,25 @@ const controller = {
         })
     },
     getAmenities: (req,res)=>{
-        new Promise((resolve, reject)=>{
-            resolve();
-            
-        }).then(()=>{
-            res.status(200).json({
-                data: db.amenities
-            });
-        })
+        knex.raw('CALL get_amenities()')
+        .then((response)=>{return res.status(200).json({data: response[0][0]})})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
+            }
+        })});
     },
     getAmenity: (req,res)=>{
-        const amenity = _.find(db.amenities, function(o){return o.id == req.params.amenityId})
+        knex.raw('CALL get_amenity(?)',[req.params.amenityId])
+        .then((response)=>{return res.status(200).json({
+            data: response[0][0][0]
+        })})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
+            }
+        })});
+        /* const amenity = _.find(db.amenities, function(o){return o.id == req.params.amenityId})
         new Promise((resolve, reject)=>{
             if(amenity){
                 resolve(amenity)
@@ -546,34 +610,8 @@ const controller = {
                     message: 'Amenity not found'
                 }
             })
-        })
+        }) */
     },
-    /* postAmenity: (req,res)=>{
-        const id = uuidv4();
-        var created_at =  new Date();
-        var updated_at= new Date(1990,1,1,0,0,0,0);
-        const data = req.body;
-        new Promise((resolve, reject)=>{
-            if(data.name && isUniqueAmenity(data.name)){
-                const amenity= {
-                    id,
-                    name: data.name,
-                    created_at,
-                    updated_at
-                }
-                db.amenities.push(amenity);
-                res.status(200).json({
-                    data: amenity
-                })
-            }else{
-                res.status(409).json({
-                    error:{
-                        message: "Wrong formatting"
-                    }
-                })
-            }
-        })
-    }, */
     postTestAmenity: (req,res)=>{
         const id = uuidv4();
         var createdAt =  new Date();
@@ -673,22 +711,27 @@ const controller = {
         })
     },
     getLAmenities: (req,res)=>{
-        new Promise((resolve, reject)=>{
-            var lAmenities = _.filter(db.lAmenities, function(o) { return o.listingId == req.params.listingId; });
-            if(lAmenities){
-                resolve(lAmenities);
-            }else{
-                reject()
+        knex.raw('CALL get_listing_amenities(?)',[req.params.listingId])
+        .then((response)=>{return res.status(200).json({
+            data: response[0][0]
+        })})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
             }
-            
-        }).then((lAmenities)=>{
-            res.status(200).json({
-                data: lAmenities
-            });
-        })
+        })});
     },
     getLAmenity: (req,res)=>{
-        const lAmenity = _.find(db.lAmenities, function(o){return o.id == req.params.lAmenityId})
+        knex.raw('CALL get_listing_amenity(?,?)',[req.params.listingId, req.params.lAmenityId])
+        .then((response)=>{return res.status(200).json({
+            data: response[0][0][0]
+        })})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
+            }
+        })});
+        /* const lAmenity = _.find(db.lAmenities, function(o){return o.id == req.params.lAmenityId})
         new Promise((resolve, reject)=>{
             if(lAmenity){
                 resolve(lAmenity)
@@ -705,7 +748,7 @@ const controller = {
                     message: 'Listing Amenity not found'
                 }
             })
-        })
+        }) */
     },
     postLAmenity: (req,res)=>{
         const id = uuidv4();
@@ -785,39 +828,26 @@ const controller = {
         })
     },
     getLImages: (req,res)=>{
-        new Promise((resolve, reject)=>{
-            var lImages = _.filter(db.lImages, function(o) { return o.listingId == req.params.listingId; });
-            if(lImages){
-                resolve(lImages);
-            }else{
-                reject()
+        knex.raw('CALL get_listing_images(?)',[req.params.listingId])
+        .then((response)=>{return res.status(200).json({
+            data: response[0][0]
+        })})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
             }
-            
-        }).then((lImages)=>{
-            res.status(200).json({
-                data: lImages
-            });
-        })
+        })});
     },
     getLImage: (req,res)=>{
-        const lImage = _.find(db.lImages, function(o){return o.id == req.params.lImageId})
-        new Promise((resolve, reject)=>{
-            if(lImage){
-                resolve(lImage)
-            }else{
-                reject()
+        knex.raw('CALL get_listing_image(?,?)',[req.params.listingId, req.params.lImageId])
+        .then((response)=>{return res.status(200).json({
+            data: response[0][0][0]
+        })})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                msg: "Internal server error"
             }
-        }).then((lImage)=>{
-            res.status(200).json({
-                data: lImage
-            });
-        }).catch(()=>{
-            res.status(404).json({
-                error: {
-                    message: 'Listing Image not found'
-                }
-            })
-        })
+        })});
     },
     postLImage: (req,res)=>{
         
