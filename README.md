@@ -16,3 +16,6 @@
 ## Database
 Tables: users, listings, reviews, bookings, amenities, listing images, listing amenities
 - put all tables/dummy data/stored procedures in **-init-tables-up.js
+
+## API fields
+name, imageupload -> POST and PUT amenities

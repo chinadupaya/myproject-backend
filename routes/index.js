@@ -1,8 +1,6 @@
 var express = require('express');
 var router = express.Router();
 const controller = require('../controllers/main.controller');
-//const multer = require('multer');
-//const path = require('path');
 /* GET home page. */
 router.get('/', function(req, res, next) {
   res.status(200).json({
@@ -12,18 +10,6 @@ router.get('/', function(req, res, next) {
   })
   //res.render('index', { title: 'health check.' });
 });
-
-/* var storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, __dirname + '/uploads/')
-  },
-  filename: function (req, file, cb) {
-    
-    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
-  }
-})
- 
-var upload = multer({ storage: storage }) */
 
 router.get('/form',function(req,res){
   res.render('uploadForm', { title: 'Health Check'});
