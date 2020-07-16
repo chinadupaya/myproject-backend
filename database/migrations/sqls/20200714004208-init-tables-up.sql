@@ -5,6 +5,7 @@ CREATE TABLE `users` (
     `email` VARCHAR(255),
     `first_name` VARCHAR(20),
     `last_name` VARCHAR(20),
+    `password` VARCHAR(60),
     `created_at` DATETIME,
     `updated_at` DATETIME,
     PRIMARY KEY(`id`)
@@ -90,19 +91,29 @@ CREATE TABLE `listing_amenities` (
     FOREIGN KEY(`amenity_id`) REFERENCES `amenities`(`id`) ON DELETE CASCADE
 ); 
 
-INSERT INTO `users` (`email`, `first_name`, `last_name`, `created_at`, `updated_at`)
-VALUES ("robwie@email.com","Robin","Wieruch",now(),now()), 
-("dddd@email.com'","Dave Davids","Davidsssss",now(),now());
+INSERT INTO `users` (`email`, `first_name`, `last_name`, `password`,`created_at`, `updated_at`)
+VALUES ("robwie@email.com","Robin","Wieruch","uSBPXAFrr9iIVUJ6zNjTmdG8eAFQOF8aUekpYTQgnzfPcS9uGsKFTvrHURjb",now(),now()), 
+("dddd@email.com'","Dave Davids","Davidsssss","PBnLTSIQJuNFO2dcpdgP2NFRryno7MORUsrUb0aKQtmDc7utJnztgNTGoTuc",now(),now());
 
 INSERT INTO `listings` (`user_id`,`name`, `description`, `property_type`, 
 `room_type`, `address`,`latitude`,`longitude`,`bed_count`,`bathroom_count`,
 `max_guest`, `price_by_night`,`created_at`, `updated_at`)
 VALUES ((SELECT `id` FROM `users` WHERE `first_name`= "Robin")
-,"Hello World","best place ever xoxo", "Bungalow","Shared","166 FloorIT street",
+,"Hello World","best place ever xoxo", "Bungalow","shared","166 FloorIT street",
 14.676041, 121.043701,3,1,5,1050,now(),now()),
 ((SELECT `id` FROM `users` WHERE `first_name`= "Dave Davids")
-,"Bye World","worst place dont go here", "House","Entire Place","32A Mahusay Street",
-32.318230, -86.902298,0,0,1,9999.99,now(),now());
+,"Bye World","worst place dont go here", "house","entire","32A Mahusay Street",
+32.318230, -86.902298,0,0,1,9999.99,now(),now()),
+(2,"heyo world!","cool place for cool people", "hotel","shared","32B Magiting Street",
+32.318230, -86.902298,4,5,2,10.99,now(),now()),
+(2,"world","xenoblade chronicles is good game", "apartment","shared","32B Magiting Street",
+32.318230, -86.902298,2,4,3,3000.99,now(),now()),
+(1,"is","melia best party member", "bnb","private","32B Magiting Street",
+32.318230, -86.902298,1,1,4,2500.99,now(),now()),
+(2,"mine","pay off your loands", "bungalow","shared","32B Magiting Street",
+32.318230, -86.902298,3,2,5,7500.99,now(),now()),
+(1,"hatsune miku","blah blah", "botique_hotel","private","32B Magiting Street",
+32.318230, -86.902298,5,3,3,9999.99,now(),now());
 
 INSERT INTO `bookings` (`start_date`, `end_date`, `is_approved`, `user_id`, `listing_id`, 
 `price_per_day`, `price_for_stay`, `created_at`,`updated_at`)
@@ -168,9 +179,33 @@ BEGIN
 	SELECT * FROM `bookings` WHERE `id` = p_booking_id;
 END;
 
-CREATE PROCEDURE `get_listings`()
+CREATE DEFINER=`root`@`%` PROCEDURE `get_listings`(IN p_min_bed INT,
+	IN p_min_bathroom INT,
+    IN p_room_type VARCHAR(20),
+    IN p_property_type VARCHAR(20),
+    IN sort_by VARCHAR (100),
+    IN page_num INT)
 BEGIN
-	SELECT * FROM `listings`;
+	DECLARE ls_min_bathroom, ls_min_bed, ls_page_num INT;
+    DECLARE ls_room_type,ls_property_type VARCHAR(20);
+	SET ls_min_bed = IFNULL(p_min_bed,0);
+	SET ls_min_bathroom = IFNULL(p_min_bathroom,0);
+    SET ls_room_type = IFNULL(p_room_type,"");
+    SET ls_property_type = IFNULL(p_property_type,"");
+    SET ls_page_num = 3*(page_num-1);
+    
+	SELECT * FROM `listings` WHERE 
+		`bed_count` >= ls_min_bed AND 
+        `bathroom_count` >= ls_min_bathroom AND
+        `room_type` LIKE CONCAT(ls_room_type,"%") AND
+        `property_type` LIKE CONCAT(ls_property_type,"%")
+	ORDER BY 
+		CASE WHEN sort_by='price_ascending' THEN `price_by_night` END,
+		CASE WHEN sort_by='price_descending' THEN `price_by_night` END DESC,
+        CASE WHEN sort_by='date_ascending' THEN `created_at` END,
+        CASE WHEN sort_by='date_descending' THEN `created_at` END DESC
+	LIMIT ls_page_num,3
+        ;
 END;
 
 CREATE PROCEDURE `get_listing`(IN p_listing_id INT)
@@ -220,14 +255,14 @@ END;
 
 CREATE PROCEDURE `is_unique_email`(IN p_email VARCHAR(255))
 BEGIN
-	SELECT `email` FROM `users` WHERE `email` = p_email; 
+	SELECT `email`,`password` FROM `users` WHERE `email` = p_email; 
 END;
 
 CREATE PROCEDURE `create_user`(IN p_email VARCHAR(255), IN p_first_name VARCHAR(20), 
-								IN p_last_name VARCHAR(20))
+								IN p_last_name VARCHAR(20), IN p_password VARCHAR(60))
 BEGIN
-	INSERT INTO `users` (`email`, `first_name`, `last_name`, `created_at`, `updated_at`)
-    VALUES (p_email, p_first_name, p_last_name, now(),now());
+	INSERT INTO `users` (`email`, `first_name`, `last_name`,`password`, `created_at`, `updated_at`)
+    VALUES (p_email, p_first_name, p_last_name, p_password,now(),now());
 END;
 
 CREATE PROCEDURE `create_listing`(IN p_user_id INT,IN p_name VARCHAR(255),
@@ -417,9 +452,9 @@ END;
 CREATE PROCEDURE `delete_listing`(IN p_listing_id INT)
 BEGIN
 	DELETE FROM `listings` WHERE `id` = p_listing_id; 
-END
+END;
 
 CREATE PROCEDURE `delete_user`(IN p_user_id INT)
 BEGIN
 	DELETE FROM `users` WHERE `id` = p_user_id; 
-END
+END;

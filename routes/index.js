@@ -17,6 +17,7 @@ router.get('/form',function(req,res){
 
 //users
 router.get('/users', controller.getUsers);
+router.post('/login',controller.loginUser);
 router.get('/users/:userId',controller.getUser);
 router.post('/users',controller.postUser);
 router.delete('/users/:userId',controller.deleteUser);
@@ -49,7 +50,6 @@ router.get('/listings/:listingId/amenities', controller.getLAmenities);
 router.get('/listings/:listingId/amenities/:lAmenityId',controller.getLAmenity);
 router.post('/listings/:listingId/amenities',controller.postLAmenity);
 router.delete('/listings/:listingId/amenities/:lAmenityId',controller.deleteLAmenity);
-router.put('/listings/:listingId/amenities/:lAmenityId',controller.putLAmenity);
 //listing images
 router.get('/listings/:listingId/images',controller.getLImages);
 router.get('/listings/:listingId/images/:lImageId',controller.getLImage);

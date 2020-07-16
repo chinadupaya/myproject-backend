@@ -9,8 +9,7 @@ var knex = require('knex')({
         database : 'mydb'
     }
 });
-var _ = require('lodash');
-var db = require('../models/db');
+var bcrypt = require('bcryptjs');
 const multer = require('multer');
 const path = require('path');
 var storage = multer.diskStorage({
@@ -18,7 +17,6 @@ var storage = multer.diskStorage({
       cb(null, __dirname + '/uploads/')
     },
     filename: function (req, file, cb) {
-      
       cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
     }
   })
@@ -77,9 +75,6 @@ const controller = {
         })});
     },
     putUser: (req,res)=>{
-        //const id = req.params.userId
-        //const toUpdate = _.findIndex(db.users, function(o){return o.id == req.params.userId})
-        //const updatedAt = new Date();
         new Promise((resolve,reject)=>{
             data = req.body
             knex.raw('CALL update_user(?,?,?,?)',[req.params.userId, data.email, data.firstName, data.lastName])
@@ -99,25 +94,73 @@ const controller = {
             })});
         })
     },
+    loginUser: (req,res)=>{
+        data = req.body;
+        knex.raw("CALL is_unique_email(?)", [data.email])
+        .then(response=>{
+            if(response[0][0].length==0){
+                return res.status(404).json({
+                    error: {
+                        message: "Email does not exist in database."
+                    }
+                })
+            }else{
+                bcrypt.compare(data.password, response[0][0][0].password, (err, res2) => {
+                    // res == true or res == false
+                    if(err){
+                        console.log(err);
+                        throw err;
+                    }else{
+                        if(res2==true && data.email === response[0][0][0].email ){
+                            res.status(200).json({
+                                success: true,
+                                message: "You're logged in!"
+                            })
+                        }
+                        else{
+                            res.status(404).json({
+                                success: false,
+                                message: "Your email or password is incorrect. Check again."
+                            })
+                        }
+                    }
+                })
+            }
+        })
+        .catch((error)=>{
+            console.log(error)
+            res.status(404).json({
+                error:{
+                    message: "Internal server error in email"
+                }
+            })
+        })
+    },
     postUser: (req,res)=>{
-        //const id = uuidv4();
         var data = req.body;
         if(data.firstName && data.lastName && data.email){
             knex.raw("CALL is_unique_email(?)",[data.email])
             .then(response => {
                 if(response[0][0].length==0){
-                    knex.raw('CALL create_user(?,?,?)',[data.email,data.firstName, data.lastName])
-                    .then((response)=>{console.log(response);
-                        return res.status(200).json({data: {
-                            email: data.email,
-                            first_name: data.firstName,
-                            last_name: data.lastName
-                        }})})
-                    .catch(()=>{return res.status(404).json({
-                        error: {
-                            message: "Internal server error"
-                        }
-                    })});
+                    bcrypt.genSalt(10, function(err, salt) {
+                        bcrypt.hash(data.password, salt, function(err, hash) {
+                            // Store hash in your password DB.
+                            knex.raw('CALL create_user(?,?,?,?)',[data.email,data.firstName, data.lastName, hash])
+                            .then((response)=>{console.log(response);
+                                return res.status(200).json({data: {
+                                    email: data.email,
+                                    first_name: data.firstName,
+                                    last_name: data.lastName,
+                                    password: hash
+                                }})})
+                            .catch(()=>{return res.status(404).json({
+                                error: {
+                                    message: "Internal server error"
+                                }
+                            })});
+                        });
+                    });
+                    
                 }else{
                     return res.status(404).json({
                         error: {
@@ -266,9 +309,26 @@ const controller = {
     },
     getListings: (req,res)=>{
         //integrate queries
-        knex.raw('CALL get_listings()')
+        var room_type = req.query.room_type;
+        var property_type = req.query.property_type;
+        var min_bed = req.query.min_bed;
+        var min_bathroom = req.query.min_bathroom;
+        var sort_by = req.query.sort_by;
+        var page_num = req.query.page_num;
+        if(min_bed == undefined){min_bed = null};
+        if(min_bathroom == undefined){min_bathroom = null};
+        if(room_type==undefined){room_type=null};
+        if(property_type==undefined){property_type=null};
+        if(sort_by==undefined){sort_by=''};
+        if(page_num==undefined){page_num=1};
+        console.log("room_type: " + room_type);
+        console.log("min_bed: " + min_bed);
+        console.log("page_num: " + page_num);
+        knex.raw('CALL get_listings(?,?,?,?,?,?)',[min_bed, min_bathroom, room_type,property_type,sort_by,page_num])
         .then((response)=>{return res.status(200).json({data: response[0][0]})})
-        .catch(()=>{return res.status(404).json({
+        .catch((error)=>{
+            console.log(error);
+            return res.status(404).json({
             error: {
                 message: "Internal server error"
             }
@@ -484,24 +544,6 @@ const controller = {
                 message: "Internal server error"
             }
         })});
-        /* const amenity = _.find(db.amenities, function(o){return o.id == req.params.amenityId})
-        new Promise((resolve, reject)=>{
-            if(amenity){
-                resolve(amenity)
-            }else{
-                reject()
-            }
-        }).then((amenity)=>{
-            res.status(200).json({
-                data: amenity
-            });
-        }).catch(()=>{
-            res.status(404).json({
-                error: {
-                    message: 'Amenity not found'
-                }
-            })
-        }) */
     },
     postTestAmenity: (req,res)=>{
         new Promise((resolve,reject,next)=>{
@@ -696,33 +738,6 @@ const controller = {
             resolve()
         })
     },
-    putLAmenity: (req,res)=>{
-        const id = req.params.amenityId
-        const updated_at = new Date();
-        console.log(req.body)
-        const toUpdate = _.findIndex(db.amenities, function(o){return o.id == req.params.amenityId})
-        new Promise((resolve, reject)=>{
-            if (toUpdate>=0){
-                const amenity = {
-                    id,
-                    name: req.body.name,
-                    created_at: req.body.created_at,
-                    updated_at: updated_at
-                }
-                db.amenities[toUpdate] = amenity;
-                  res.status(200).json({
-                      data: amenity
-                  })
-            }else{
-                res.status(404).json({
-                    error:{
-                        message: "Wrong formatting"
-                    }
-                })
-            }
-            resolve()
-        })
-    },
     getLImages: (req,res)=>{
         knex.raw('CALL get_listing_images(?)',[req.params.listingId])
         .then((response)=>{return res.status(200).json({
@@ -830,18 +845,4 @@ const controller = {
         })  
     }
 }
-
-function amenityExistsAndNew(amenityId, listingId){
-    var lAmenities = _.filter(db.lAmenities, function(o) { return o.listingId == listingId; });
-    var foundIndex = _.findIndex(db.amenities, function(o) { return o.id == amenityId; });
-    var foundListingIndex = _.findIndex(lAmenities, function(o){return o.amenityId == amenityId})
-    if(foundIndex >=0 ){ //amenity exists in database
-        if(foundListingIndex == -1){ //listing does not have amenity
-            return true
-        } 
-        return false
-    }
-    return false
-}
-
 module.exports = controller;
