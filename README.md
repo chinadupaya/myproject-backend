@@ -5,7 +5,7 @@
 `docker-compose build`
 - Build images. Do this everytime Dockerfile is changed.
 `docker-compose up`
-- This should migrate all the tables into the mysql server
+- This should migrate all the tables into the mysql server and start the containers
 `docker-compose down`
 - Use for cleanup. Stops and deletes the containers.
 

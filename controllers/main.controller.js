@@ -1,4 +1,3 @@
-var { v4:uuidv4 } = require('uuid')
 var knex = require('knex')({
     client: 'mysql',
     version: '5.7',
@@ -14,8 +13,9 @@ const multer = require('multer');
 const path = require('path');
 var storage = multer.diskStorage({
     destination: function (req, file, cb) {
-      cb(null, __dirname + '/uploads/')
-    },
+        console.log(__dirname)
+        cb(null, __dirname + '/../public/images/')
+    }, 
     filename: function (req, file, cb) {
       cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
     }
@@ -45,13 +45,12 @@ function checkFileType(file, cb){
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
     // Check mime
     const mimetype = filetypes.test(file.mimetype);
-  
     if(mimetype && extname){
       return cb(null,true);
     } else {
         cb('Error: Images Only!');
     }
-  }
+}
 
 const controller = {
     getUsers: (req,res)=>{
