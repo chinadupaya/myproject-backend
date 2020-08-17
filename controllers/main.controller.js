@@ -1,13 +1,5 @@
-var knex = require('knex')({
-    client: 'mysql',
-    version: '5.7',
-    connection: {
-        host : 'db_server',
-        user : 'root',
-        password : 'password',
-        database : 'mydb'
-    }
-});
+const repo = require('../repositories/main.repository');
+const shortId = require('shortid');
 var bcrypt = require('bcryptjs');
 const multer = require('multer');
 const path = require('path');
@@ -54,8 +46,9 @@ function checkFileType(file, cb){
 
 const controller = {
     getUsers: (req,res)=>{
-        knex.raw('CALL get_users()')
-        .then((response)=>{return res.status(200).json({data: response[0][0]})})
+        repo.getUsers()
+        .then((response)=>{
+            return res.status(200).json({data: response})})
         .catch(()=>{return res.status(404).json({
             error: {
                 message: "Internal server error"
@@ -63,10 +56,28 @@ const controller = {
         })});
     },
     getUser: (req,res)=>{
-        knex.raw('CALL get_user(?)',[req.params.userId])
+        repo.getUser(req.params.userId)
         .then((response)=>{return res.status(200).json({
-            data: response[0][0][0]
+            data: response
         })})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                message: "Internal server error"
+            }
+        })});
+    },
+    getUserBookings:(req,res)=>{
+        repo.getUserBookings(req.params.userId)
+        .then((response)=> {return res.status(200).json({data: response})})
+        .catch(()=>{return res.status(404).json({
+            error: {
+                message: "Internal server error"
+            }
+        })});
+    },
+    getUserListings:(req,res)=>{
+        repo.getUserListings(req.params.userId)
+        .then((response)=> {return res.status(200).json({data: response})})
         .catch(()=>{return res.status(404).json({
             error: {
                 message: "Internal server error"
@@ -76,14 +87,15 @@ const controller = {
     putUser: (req,res)=>{
         new Promise((resolve,reject)=>{
             data = req.body
-            knex.raw('CALL update_user(?,?,?,?)',[req.params.userId, data.email, data.firstName, data.lastName])
+            repo.putUser(req.params.userId, data.email, data.firstName, data.lastName)
             .then(()=>{
                 return res.status(200).json({
                     data:{
+                        id: req.params.userId,
                         email: data.email,
                         first_name: data.firstName,
                         last_name: data.lastName
-                    }
+                }
                 })
             })
             .catch(()=>{return res.status(404).json({
@@ -95,7 +107,7 @@ const controller = {
     },
     loginUser: (req,res)=>{
         data = req.body;
-        knex.raw("CALL is_unique_email(?)", [data.email])
+        repo.compareEmail(data.email)
         .then(response=>{
             if(response[0][0].length==0){
                 return res.status(404).json({
@@ -113,7 +125,10 @@ const controller = {
                         if(res2==true && data.email === response[0][0][0].email ){
                             res.status(200).json({
                                 success: true,
-                                message: "You're logged in!"
+                                id: response[0][0][0].id,
+                                email: response[0][0][0].email,
+                                first_name: response[0][0][0].first_name,
+                                last_name: response[0][0][0].last_name,
                             })
                         }
                         else{
@@ -137,24 +152,28 @@ const controller = {
     },
     postUser: (req,res)=>{
         var data = req.body;
+        var newId = shortId.generate();
         if(data.firstName && data.lastName && data.email){
-            knex.raw("CALL is_unique_email(?)",[data.email])
+            repo.compareEmail(data.email)
             .then(response => {
                 if(response[0][0].length==0){
                     bcrypt.genSalt(10, function(err, salt) {
                         bcrypt.hash(data.password, salt, function(err, hash) {
                             // Store hash in your password DB.
-                            knex.raw('CALL create_user(?,?,?,?)',[data.email,data.firstName, data.lastName, hash])
-                            .then((response)=>{console.log(response);
+                            //console.log(data);
+                            repo.postUser(newId, data.email,data.firstName, data.lastName, hash)
+                            .then((response)=>{
+                                console.log(response);
                                 return res.status(200).json({data: {
+                                    id: newId,
                                     email: data.email,
                                     first_name: data.firstName,
                                     last_name: data.lastName,
                                     password: hash
                                 }})})
-                            .catch(()=>{return res.status(404).json({
+                            .catch((err)=>{return res.status(404).json({
                                 error: {
-                                    message: "Internal server error"
+                                    message: "Internal server error 1"
                                 }
                             })});
                         });
@@ -178,31 +197,26 @@ const controller = {
         }
     },
     deleteUser: (req,res)=>{
-        new Promise((resolve, reject)=>{
-            knex.raw('CALL delete_user(?)',[req.params.userId])
-            .then(()=>{
-                res.status(200).json({
-                    data: {
-                        id: req.params.userId
-                    }
-                })
+        repo.deleteUser(req.params.userId)
+        .then((response)=>{
+            res.status(200).json({
+                data: {
+                    id: req.params.userId
+                }
             })
-            .catch((error)=>{
-                console.log(error);
-                res.status(404).json({
-                    error:{
-                        message: "Internal server error"
-                    }
-                })
-            })
-            resolve()
         })
-        
-        
+        .catch((error)=>{
+            console.log(error);
+            res.status(404).json({
+                error:{
+                    message: "Internal server error"
+                }
+            })
+        })  
     },
     getBookings:(req,res)=>{
-        knex.raw('CALL get_bookings()')
-        .then((response)=>{return res.status(200).json({data: response[0][0]})})
+        repo.getBookings()
+        .then((response)=>{return res.status(200).json({data: response})})
         .catch(()=>{return res.status(404).json({
             error: {
                 message: "Internal server error"
@@ -210,9 +224,9 @@ const controller = {
         })});
     },
     getBooking:(req,res)=>{
-        knex.raw('CALL get_booking(?)',[req.params.bookingId])
+        repo.getBooking(req.params.bookingId)
         .then((response)=>{return res.status(200).json({
-            data: response[0][0][0]
+            data: response
         })})
         .catch(()=>{return res.status(404).json({
             error: {
@@ -223,108 +237,105 @@ const controller = {
     putBooking:(req,res)=>{
         const id = req.params.bookingId;
         const data = req.body;
-        new Promise((resolve,reject)=>{
-                const booking = {
-                    id,
-                    startDate:data.startDate, 
-                    endDate:data.endDate,
-                    isApproved: data.isApproved,
-                    userId: data.userId,
-                    listingId: data.listingId,
-                    pricePerDay: data.pricePerDay,
-                    priceForStay: data.priceForStay,
-                }
-                knex.raw('CALL update_booking(?,?,?,?,?,?,?,?)',[id,data.startDate, data.endDate,
-                    data.isApproved,data.userId,data.listingId,data.pricePerDay, data.priceForStay])
-                .then(()=>{
-                    res.status(200).json({
-                        data: booking
-                    })
-                })
-                resolve()
-        })
-
-    },
-    postBooking:(req,res)=>{
-        new Promise((resolve,reject)=>{
-            var data = req.body;
-            if(data.startDate && data.endDate 
-                && data.userId 
-                && data.listingId 
-                && data.pricePerDay
-                && data.priceForStay){
-                const booking = {
-                    start_date:data.startDate, 
-                    end_date:data.endDate,
-                    is_approved: 0,
-                    user_id: data.userId,
-                    listing_id: data.listingId,
-                    price_per_day: data.pricePerDay,
-                    price_for_stay: data.priceForStay,
-                };
-                knex.raw('CALL create_booking(?,?,?,?,?,?,?)',[
-                    data.startDate, data.endDate, data.isApproved, data.userId,
-                    data.listingId, data.pricePerDay,data.priceForStay
-                ]).then((response)=>{
-                    console.log(response);
-                    return res.status(200).json({data: booking})
-                    })
-                .catch(()=>{return res.status(404).json({
-                    error: {
-                        message: "Internal server error"
-                    }
-                })});
-            }else{
-                res.status(404).json({
-                    error:{
-                        message: "Wrong formatting"
-                    }
-                })
+            const booking = {
+                id,
+                startDate:data.startDate, 
+                endDate:data.endDate,
+                isApproved: data.isApproved,
+                userId: data.userId,
+                listingId: data.listingId,
+                pricePerDay: data.pricePerDay,
+                priceForStay: data.priceForStay,
             }
-            resolve()
-        })
-        
-    },
-    deleteBooking:(req,res)=>{
-        new Promise((resolve, reject)=>{
-            knex.raw('CALL delete_booking(?)',[req.params.bookingId])
+            repo.putBooking(id,data.startDate, data.endDate,
+                data.isApproved,data.userId,data.listingId, data.pricePerDay, data.priceForStay)
             .then(()=>{
                 res.status(200).json({
-                    data: {
-                        id: req.params.bookingId
-                    }
+                    data: booking
                 })
             })
-            .catch((error)=>{
-                console.log(error);
-                res.status(404).json({
-                    error:{
-                        message: "Internal server error"
-                    }
+            .catch(()=>{return res.status(404).json({
+                error: {
+                    message: "Internal server error"
+                }
+            })});
+    },
+    postBooking:(req,res)=>{
+        var data = req.body;
+        var newId = shortId.generate();
+        if(data.startDate && data.endDate && data.userId && data.listingId && data.listingName && data.listingAddress && data.pricePerDay && data.priceForStay){
+            const booking = {
+                id: newId,
+                start_date:data.startDate, 
+                end_date:data.endDate,
+                is_approved: 0,
+                user_id: data.userId,
+                listing_id: data.listingId,
+                listing_name: data.listingName,
+                listing_address: data.listingAddress,
+                price_per_day: data.pricePerDay,
+                price_for_stay: data.priceForStay,
+            };
+            repo.postBooking(newId,
+                data.startDate, data.endDate, data.isApproved, data.userId,
+                data.listingId, data.listingName, data.listingAddress, data.pricePerDay,data.priceForStay
+            ).then((response)=>{
+                console.log(response);
+                return res.status(200).json({data: booking})
                 })
+            .catch(()=>{return res.status(404).json({
+                error: {
+                    message: "Internal server error"
+                }
+            })});
+        }else{
+            res.status(404).json({
+                error:{
+                    message: "Wrong formatting"
+                }
             })
-            resolve()
+        }
+    },
+    deleteBooking:(req,res)=>{
+        repo.deleteBooking(req.params.bookingId)
+        .then(()=>{
+            res.status(200).json({
+                data: {
+                    id: req.params.bookingId
+                }
+            })
+        })
+        .catch((error)=>{
+            console.log(error);
+            res.status(404).json({
+                error:{
+                    message: "Internal server error"
+                }
+            })
         })
     },
     getListings: (req,res)=>{
         //integrate queries
         var room_type = req.query.room_type;
+        var latitude = req.query.latitude;
+        var longitude = req.query.longitude;
         var property_type = req.query.property_type;
         var min_bed = req.query.min_bed;
         var min_bathroom = req.query.min_bathroom;
         var sort_by = req.query.sort_by;
         var page_num = req.query.page_num;
         if(min_bed == undefined){min_bed = null};
+        if(latitude == undefined){latitude = null};
+        if(longitude == undefined){longitude = null};
         if(min_bathroom == undefined){min_bathroom = null};
         if(room_type==undefined){room_type=null};
         if(property_type==undefined){property_type=null};
         if(sort_by==undefined){sort_by=''};
         if(page_num==undefined){page_num=1};
-        console.log("room_type: " + room_type);
-        console.log("min_bed: " + min_bed);
-        console.log("page_num: " + page_num);
-        knex.raw('CALL get_listings(?,?,?,?,?,?)',[min_bed, min_bathroom, room_type,property_type,sort_by,page_num])
-        .then((response)=>{return res.status(200).json({data: response[0][0]})})
+        repo.getListings(latitude, longitude,min_bed, min_bathroom, room_type,property_type,sort_by,page_num)
+        .then((response)=>{return res.status(200).json({
+            page: page_num,
+            data: response})})
         .catch((error)=>{
             console.log(error);
             return res.status(404).json({
@@ -334,31 +345,61 @@ const controller = {
         })});
     },
     getListing: (req,res)=>{
-        knex.raw('CALL get_listing(?)',[req.params.listingId])
-        .then((response)=>{return res.status(200).json({
-            data: response[0][0][0]
-        })})
-        .catch(()=>{return res.status(404).json({
+        repo.getListing(req.params.listingId)
+        .then((response)=>{
+            return res.status(200).json({
+                data: response
+            })
+        })
+        .catch((err)=>{
+            console.log("err",err);
+            return res.status(404).json({
             error: {
                 message: "Internal server error"
             }
         })});
 
     },
+    getUserListingBookings:(req,res)=>{
+        repo.getUserListingBookings(req.params.userId, req.params.listingId)
+        .then((response)=> {return res.status(200).json({data: response})})
+        .catch((err)=>{
+            
+            return res.status(404).json({
+            error: {
+                message: "Internal server error"
+            }
+        })});
+    },
+    getListingBookings:(req,res)=>{
+        console.log(req.params.listingId)
+        repo.getListingBookings(req.params.listingId)
+        .then((response)=> {return res.status(200).json({data: response})})
+        .catch((err)=>{
+            console.log(err);
+            return res.status(404).json({
+            error: {
+                message: "Internal server error"
+            }
+        })});
+    },
     postListing: (req,res)=>{
         const data = req.body;
+        var newId = shortId.generate();
         new Promise((resolve, reject)=>{
             if(data.name && data.address 
                 && data.latitude && data.longitude 
                 && data.bedCount && data.bathroomCount 
                 && data.maxGuest && data.priceByNight && data.userId){
-                    knex.raw('CALL create_listing(?,?,?,?,?,?,?,?,?,?,?,?)',[
-                        data.userId, data.name, data.description, data.propertyType,
+                    repo.postListing(newId,data.userId, data.firstName, data.lastName, data.name, data.description, data.propertyType,
                         data.roomType, data.address,data.latitude,data.longitude,
                         data.bedCount, data.bathroomCount, data.maxGuest, data.priceByNight
-                    ]).then((response)=>{console.log(response);
+                    ).then((response)=>{console.log(response);
                         return res.status(200).json({data: {
+                            id: newId,
                             user_id: data.userId,
+                            first_name: data.firstName,
+                            last_name: data.lastName,
                             name: data.name,
                             description: data.description,
                             property_type: data.propertyType,
@@ -405,14 +446,12 @@ const controller = {
                 price_by_night: data.priceByNight,
                 user_id: data.userId,
             }
-            knex.raw('CALL update_listing(?,?,?,?,?,?,?,?,?,?,?,?,?)',[id,
+            repo.putListing(id,
                 data.userId, data.name, data.description, data.propertyType,
                 data.roomType, data.address, data.latitude, data.longitude, data.bedCount,
-                data.bathroomCount, data.maxGuest, data.priceByNight
-            ]).then(()=>{
-                res.status(200).json({
-                    data: listing
-                })
+                data.bathroomCount, data.maxGuest, data.priceByNight)
+            .then((data)=>{ 
+                res.status(200).json({data:listing})  
             }).catch((err)=>{
                 console.log(err);
                 res.status(404).json({
@@ -426,7 +465,7 @@ const controller = {
     },
     deleteListing: (req,res)=>{
         new Promise((resolve, reject)=>{
-            knex.raw('CALL delete_listing(?)',[req.params.listingId])
+            repo.deleteListing(req.params.listingId)
             .then(()=>{
                 res.status(200).json({
                     data: {
@@ -447,9 +486,9 @@ const controller = {
         
     },
     getReviews: (req,res) =>{
-        knex.raw('CALL get_reviews(?)',[req.params.listingId])
+        repo.getReviews(req.params.listingId)
         .then((response)=>{return res.status(200).json({
-            data: response[0][0]
+            data: response
         })})
         .catch(()=>{return res.status(404).json({
             error: {
@@ -458,9 +497,9 @@ const controller = {
         })});
     },
     getReview: (req,res) =>{
-        knex.raw('CALL get_review(?,?)',[req.params.listingId, req.params.reviewId])
+        repo.getReview(req.params.listingId, req.params.reviewId)
         .then((response)=>{return res.status(200).json({
-            data: response[0][0][0]
+            data: response
         })})
         .catch(()=>{return res.status(404).json({
             error: {
@@ -470,18 +509,21 @@ const controller = {
     },
     postReview: (req,res) =>{
         const data = req.body
+        var newId = shortId.generate();
         new Promise((resolve,reject)=>{
             if(data.listingId && data.userId && data.ratingNum && data.bookingId){
                 const review = {
+                    id: newId,
                     user_id:data.userId,
+                    first_name: data.firstName,
+                    last_name: data.lastName,
                     listing_id: data.listingId,
                     rating_num: data.ratingNum,
                     content: data.content,
                     booking_id:data.bookingId,
                 };
-                knex.raw('CALL create_review(?,?,?,?,?)',[
-                    data.userId, data.listingId, data.bookingId, data.ratingNum, data.content
-                ]).then(()=>{
+                repo.postReview(newId, data.userId, data.firstName, data.lastName,data.listingId, data.bookingId, data.ratingNum, data.content)
+                .then(()=>{
                     res.status(200).json({
                         data: review
                     })
@@ -506,7 +548,7 @@ const controller = {
     },
     deleteReview: (req,res) =>{
         new Promise((resolve, reject)=>{
-            knex.raw('CALL delete_listing_image(?)', req.params.reviewId)
+            repo.deleteReview(req.params.reviewId)
             .then(()=>{
                 res.status(200).json({
                     data: {
@@ -524,223 +566,10 @@ const controller = {
             resolve()
         })
     },
-    getAmenities: (req,res)=>{
-        knex.raw('CALL get_amenities()')
-        .then((response)=>{return res.status(200).json({data: response[0][0]})})
-        .catch(()=>{return res.status(404).json({
-            error: {
-                message: "Internal server error"
-            }
-        })});
-    },
-    getAmenity: (req,res)=>{
-        knex.raw('CALL get_amenity(?)',[req.params.amenityId])
-        .then((response)=>{return res.status(200).json({
-            data: response[0][0][0]
-        })})
-        .catch(()=>{return res.status(404).json({
-            error: {
-                message: "Internal server error"
-            }
-        })});
-    },
-    postTestAmenity: (req,res)=>{
-        new Promise((resolve,reject,next)=>{
-            uploadSingle(req,res,(err)=>{
-                if(err){
-                    console.error(err);
-                    res.status(404).json({
-                        error:{
-                            message: "Internal server error"
-                        }
-                    })
-                }else{
-                    if(req.file == undefined){
-                        res.status(400).json({
-                            error:{
-                                message: "Bad request. No image uploaded"
-                            }
-                        })
-                    }else{
-                        //const file = req.file;
-                        const filePath = req.file.path;
-                        const name = req.body.name;
-                        if(name){
-                            const amenity= {
-                                name: name,
-                                amenity_file: filePath,
-                            }
-                            knex.raw('CALL create_amenity(?,?)',[name, filePath])
-                            .then((response)=>{
-                                console.log(response.json)
-                                return res.status(200).json({
-                                    data: amenity
-                                })
-                            })
-                            
-                        }else{
-                            res.status(409).json({
-                                error:{
-                                    message: "One or more of your fields is missing"
-                                }
-                            })
-                        }
-                    }
-                }
-            })
-            resolve()
-        })
-        
-    },
-    deleteAmenity: (req,res)=>{
-        new Promise((resolve, reject)=>{
-            knex.raw('CALL delete_amenity(?)', req.params.amenityId)
-            .then(()=>{
-                res.status(200).json({
-                    data: {
-                        id: req.params.amenityId
-                    }
-                })
-            })
-            .catch(()=>{
-                res.status(404).json({
-                    error:{
-                        message: "Internal server error"
-                    }
-                })
-            })
-            resolve()
-        })
-    },
-    putAmenity: (req,res)=>{
-        const id = req.params.amenityId
-        new Promise((resolve, reject)=>{
-            uploadSingle(req,res,(err)=>{
-                if(err){
-                    console.error(err);
-                    res.status(404).json({
-                        error:{
-                            message: "Internal server error in uploading"
-                        }
-                    })
-                }else{
-                    if(req.file == undefined){
-                        //only update name
-                        knex.raw('CALL update_amenity_name(?,?)',[id, req.body.name])
-                        .then(()=>{
-                            res.status(200).json({
-                                data: {
-                                    id,
-                                    name: req.body.name
-                                }
-                            })
-                        })
-                        .catch((err)=>{
-                            console.log(err);
-                            res.status(404).json({
-                                error: {
-                                    message: "Internal server error"
-                                }
-                            })
-                        })
-                    }else{
-                        //update amenity_file + name
-                        const filePath = req.file.path;
-                        const name = req.body.name;
-                        const amenity= {
-                            id,
-                            name: name,
-                            amenity_file: filePath,
-                        }
-                        knex.raw('CALL update_amenity_full(?,?,?)',[id, name, filePath])
-                        .then((response)=>{
-                            console.log(response.json)
-                            return res.status(200).json({
-                                data: amenity
-                            })
-                        })
-                            
-                    }
-                }
-            })
-            resolve()
-        })
-    },
-    getLAmenities: (req,res)=>{
-        knex.raw('CALL get_listing_amenities(?)',[req.params.listingId])
-        .then((response)=>{return res.status(200).json({
-            data: response[0][0]
-        })})
-        .catch(()=>{return res.status(404).json({
-            error: {
-                message: "Internal server error"
-            }
-        })});
-    },
-    getLAmenity: (req,res)=>{
-        knex.raw('CALL get_listing_amenity(?,?)',[req.params.listingId, req.params.lAmenityId])
-        .then((response)=>{return res.status(200).json({
-            data: response[0][0][0]
-        })})
-        .catch(()=>{return res.status(404).json({
-            error: {
-                message: "Internal server error"
-            }
-        })});
-    },
-    postLAmenity: (req,res)=>{
-        //const id = uuidv4();
-        //var createdAt =  new Date();
-        //var updatedAt= new Date(1990,1,1,0,0,0,0);
-        const data = req.body;
-        console.log(req.body);
-        new Promise((resolve, reject)=>{
-            //if amenity exists and new
-            const lAmenity= {
-                listing_id: req.params.listingId,
-                amenity_id: data.amenityId,
-            }
-            knex.raw('CALL create_listing_amenity(?,?)',[req.params.listingId,data.amenityId])
-            .then(()=>{
-                return res.status(200).json({
-                    data: lAmenity
-                })
-            })
-            .catch(()=>{
-                return res.status(404).json({
-                    error: {
-                        message: "Internal server error."
-                    }
-                })
-            })
-            
-            resolve()
-        })
-    },
-    deleteLAmenity: (req,res)=>{
-        new Promise((resolve, reject)=>{
-            knex.raw('CALL delete_listing_amenity(?)',[req.params.lAmenityId])
-            .then(()=>{
-                res.status(200).json({
-                    data: {
-                        id: req.params.lAmenityId
-                    }
-                })
-            })
-            .catch(()=>{
-                res.status(404).json({
-                    error:{
-                        message: "Internal server error"
-                    }
-                })
-            })
-            resolve()
-        })
-    },
     getLImages: (req,res)=>{
-        knex.raw('CALL get_listing_images(?)',[req.params.listingId])
+        repo.getLImages(req.params.listingId)
         .then((response)=>{return res.status(200).json({
-            data: response[0][0]
+            data: response
         })})
         .catch(()=>{return res.status(404).json({
             error: {
@@ -767,7 +596,7 @@ const controller = {
                     console.error(err);
                     res.status(404).json({
                         error:{
-                            message: "Internal server error"
+                            message: "Internal server error3"
                         }
                     });
                 }else{
@@ -779,35 +608,19 @@ const controller = {
                         })
                     }else{
                         const files = req.files;
+                        console.log("files",files);
+                        console.log(req.body.listingId);
                         const filesLength = req.files.length;
                         const listingId = req.body.listingId;
                         const uploadedBy = req.body.uploadedBy;
-                        var promises = [];
-                        for (var i = 0; i<filesLength;i++){
-                            var filePath = files[i].path
-                            //check if image
-                            let image = {
-                                listing_id: listingId,
-                                listing_file: filePath,
-                                uploadedBy: uploadedBy,
-                            }
-                            promises.push(knex.raw('CALL create_listing_image(?,?,?)',[
-                                listingId, filePath, uploadedBy
-                            ])
-                            .then(()=>{
-                                images.push(image);})
-                            .catch((err)=>{throw err;})
-                            )
-                            
-                        }
-                        Promise.all(promises)
-                        .then(()=>{
-                            res.status(200).json({data: images})
+                        repo.postLImages(files,filesLength, listingId, uploadedBy)
+                        .then((response)=>{
+                            res.status(200).json({data: response})
                         })
                         .catch(()=>{
                             res.status(404).json({
                                 error:{
-                                    message: "Internal server error."
+                                    message: "Internal server error1."
                                 }
                             })
                         })
@@ -818,7 +631,7 @@ const controller = {
         }).catch(()=>{
             res.status(404).json({
                 error:{
-                    message: "Internal server error."
+                    message: "Internal server error2."
                 }
             })
         })
